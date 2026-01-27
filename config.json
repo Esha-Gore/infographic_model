@@ -1,0 +1,48 @@
+{
+  "experiment_name": "resnet18_baseline",
+  "model": {
+    "num_classes": 3
+  },
+  "training": {
+    "num_epochs": 30,
+    "batch_size": 4,
+    "num_workers": 0
+  },
+  "optimizer": {
+    "type": "SGD",
+    "lr": 0.001,
+    "momentum": 0.9,
+    "weight_decay": 5e-4
+  },
+  "scheduler": {
+    "type": "StepLR",
+    "step_size": 30,
+    "gamma": 0.1
+  },
+  "loss": {
+    "type": "CrossEntropyLoss"
+  },
+  "data_augmentation": {
+    "train": {
+      "random_horizontal_flip": true,
+      "random_crop": {
+        "size": 208,
+        "padding": 4
+      }
+    },
+    "normalize": {
+      "mean": [0.485, 0.456, 0.406],
+      "std": [0.229, 0.224, 0.225]
+    }
+  },
+  "paths": {
+    "train_data": "./data/train",
+    "test_data": "./data/test",
+    "checkpoint_dir": "./checkpoints",
+    "tensorboard_dir": "./runs/resnet18_training"
+  },
+  "logging": {
+    "save_images_every": 1000,
+    "save_checkpoint_every": 5
+  }
+}
