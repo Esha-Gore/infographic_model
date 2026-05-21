@@ -1,0 +1,6 @@
+{
+  "model_path": "/gscratch/scrubbed/eshagore/infographic_model/runs/resnet50_simpleaug_full_more_epochs_20260502_060007/checkpoints/best_model.pth",
+  "crops_dir": "/gscratch/scrubbed/eshagore/omniparser_dataset/updated_dataset_results_more_countries/crops",
+  "output_path": "/gscratch/scrubbed/eshagore/omniparser_dataset/dataset_results/combined_predictions.json",
+  "batch_size": 64
+}
