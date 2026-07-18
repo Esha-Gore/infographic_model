@@ -9,7 +9,7 @@ The full pipeline has 4 envs, if you only need to run a certain stage you may on
 Runs: `omniparser/process_dataset_with_csv.py` (stage: omniparser)
 
 ```bash
-bash omniparser/setup_env_two.sh      # builds the conda env (torch, transformers, ultralytics, ...)
+bash omniparser/setup_env_two.sh   
 ```
 Skip this env if you already have `all_detections.json` (set `stages.omniparser=false`).
 
