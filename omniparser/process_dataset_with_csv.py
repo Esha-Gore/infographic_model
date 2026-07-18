@@ -6,28 +6,48 @@ import os
 import json
 import base64
 import io
+import argparse
 import pandas as pd
 
 # ===== CONFIGURATION =====
-IMAGE_FOLDER = '/gscratch/scrubbed/atgao/kaleidoscope_data'
-CSV_FILE = '/gscratch//stf/eshagore/updated_images/websites_onlyvalid_top1000.csv'
-OUTPUT_FOLDER = '/gscratch/scrubbed/eshagore/dataset_results_new_weights'
-
 IMAGE_COLUMN = 'uuid'
 COUNTRY_COLUMN = 'country'
 
-FILTER_COLUMN = 'is_porn'
-FILTER_VALUE = True
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Run OmniParser (YOLO detector + Florence-2 captioner) over a CSV of "
+                    "screenshots, writing all_detections.json + annotated images per country."
+    )
+    p.add_argument("--csv", required=True, help="websites/countries CSV (needs uuid + country columns)")
+    p.add_argument("--images-dir", required=True, help="folder of input screenshots")
+    p.add_argument("--output-dir", required=True, help="where to write all_detections.json + annotated imgs")
+    p.add_argument("--yolo-weights", required=True, help="path to icon_detect model.pt")
+    p.add_argument("--florence-weights", required=True, help="path to icon_caption_florence dir")
+    p.add_argument("--device", default="cuda", help="torch device for the captioner (default cuda)")
+    p.add_argument("--filter-column", default="is_porn",
+                   help="drop rows where this column == filter-value; pass '' to disable")
+    p.add_argument("--filter-value", default=True,
+                   help="value to filter out in filter-column (default True)")
+    return p.parse_args()
+
+
+args = parse_args()
+IMAGE_FOLDER = args.images_dir
+CSV_FILE = args.csv
+OUTPUT_FOLDER = args.output_dir
+FILTER_COLUMN = args.filter_column
+FILTER_VALUE = args.filter_value
 # =========================
 
 print("Loading models...")
 yolo_model = get_yolo_model(
-    model_path='/gscratch/stf/eshagore/weights/icon_detect_florence/model.pt'
+    model_path=args.yolo_weights
 )
 caption_model_processor = get_caption_model_processor(
     model_name='florence2',
-    model_name_or_path='/gscratch/stf/eshagore/weights/icon_caption_florence',
-    device='cuda'
+    model_name_or_path=args.florence_weights,
+    device=args.device
 )
 print("Models loaded successfully\n")
 

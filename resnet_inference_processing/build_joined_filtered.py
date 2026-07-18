@@ -36,8 +36,11 @@ import pandas as pd
 def join_predictions_detections(predictions, detections):
     print("Building lookup from detections...")
     lookup = {}
+    # country is dropped by infer.py so add back here
+    country_lookup = {}
     for entry in detections:
         uuid = entry.get("uuid", "")
+        country_lookup[uuid] = entry.get("country", "")
         for el_idx, el in enumerate(entry.get("elements", [])):
             if el.get("type") == "icon":
                 lookup[(uuid, el_idx)] = el.get("content", "")
@@ -67,7 +70,7 @@ def join_predictions_detections(predictions, detections):
             "crop_filename": crop_filename,
             "uuid": uuid,
             "element_index": el_idx,
-            "country": pred.get("country", ""),
+            "country": country_lookup.get(uuid, pred.get("country", "")),
             "pred_class": pred["pred_class"],
             "confidence": pred["confidence"],
             "content": content,
