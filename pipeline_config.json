@@ -4,16 +4,20 @@
     "omniparser": "<FILL_ME: omniparser env python, e.g. /path/to/envs/omniparser/bin/python>",
     "resnet": "<FILL_ME: resnet env python (runs icon_crops + infer)>",
     "translate": "<FILL_ME: pandas/boto3 env python (runs flatten + translate + join)>",
-    "bertopic": "<FILL_ME: bertopic env python, Python 3.10 (runs bertopic + fill_category + count_embeddings)>"
+    "bertopic": "<FILL_ME: bertopic env python, Python 3.10 (runs bertopic + fill_category)>"
   },
   "paths": {
-    "screenshots_dir": "<FILL_ME: folder of input screenshots>",
-    "countries_csv": "<FILL_ME: websites/countries csv (must have uuid + category columns)>",
     "omniparser_output": "<FILL_ME: dir to write all_detections.json + annotated images>",
     "work_dir": "./pipeline_out",
     "resnet_model": "./Models/resnet50_best_model.pth",
     "bertopic_model": "./Models/bertopic_model_reduced_600",
     "captions_translated_csv": "./omniparser/captions_translated.csv"
+  },
+  "single_image": {
+    "image": "<FILL_ME: path to one screenshot>",
+    "uuid": "<FILL_ME: id for this image>",
+    "country": "<FILL_ME: country tag>",
+    "category": "<FILL_ME: category tag>"
   },
   "params": {
     "confidence_threshold": 0.8,
