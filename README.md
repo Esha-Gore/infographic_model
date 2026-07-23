@@ -1,55 +1,60 @@
 # Icon Detection and Clustering Model
----- Add in Blurb ----
+This is an icon detection and classification model. It can take in a website screenshot and output an embeddings of the topics of icons present in the website. 
 ## FLOWCHART OF DATA + FILES
 
 ```mermaid
 flowchart TD
     C[/"single photo<br/>(+uuid, country, category)"/] --> P
-    P["process_image.py<br/>(OmniParser)"] --> BI[/"bounded image"/]
+    P["process_image.py<br/>(OmniParser: YOLO + Florence-2)"] --> BI[/"annotated image"/]
     P --> AD[/"all_detections.json"/]
 
-    AD --> CR["icon_crops.py"]
+    AD --> CR["updated_icon_crop.py<br/>(icon_crops)"]
     C --> CR
     CR --> CROPS[/"icon crops"/]
     CROPS --> RN["infer.py<br/>(ResNet50)"]
     RN --> PRED[/"predictions.json"/]
 
-    AD --> CF["caption_flatten.py"]
+    AD --> CF["flatten_dataset.py<br/>(flatten)"]
     CF --> FLAT[/"captions_flat.csv"/]
-    FLAT --> AWS["aws_translate.py"]
+    FLAT --> AWS["translation_aws.py<br/>(translate — AWS Bedrock, optional)"]
     AWS --> TRANS[/"captions_translated.csv"/]
 
-    PRED --> BJ["build_joined_filtered.py"]
+    PRED --> BJ["build_joined_filtered.py<br/>(join)"]
     TRANS --> BJ
     AD --> BJ
     BJ --> JF[/"joined_filtered.json + .csv"/]
-    JF --> BT["BERTopic"]
-    BT --> TOPICS[/"topic clusters"/]
+    JF --> BT["bertopic_infer.py<br/>(BERTopic)"]
+    BT --> TOP[/"topics.csv"/]
+    TOP --> FC["fill_category.py"]
+    FC --> TWC[/"topics_with_categories.csv"/]
+    TWC --> CE["build_embeddings.py<br/>(count_embeddings)"]
+    CE --> EMB[/"embeddings_og.csv"/]
 
     classDef script fill:#cce5cc,stroke:#5a8a5a,color:#1b3b1b;
     classDef data fill:#cce0f0,stroke:#4a7aa5,color:#143047;
-    class P,CR,RN,CF,AWS,BJ,BT script;
-    class C,BI,AD,CROPS,PRED,FLAT,TRANS,JF,TOPICS data;
+    class P,CR,RN,CF,AWS,BJ,BT,FC,CE script;
+    class C,BI,AD,CROPS,PRED,FLAT,TRANS,JF,TOP,TWC,EMB data;
 ```
 
 ### Omniparser
-We ran Microsoft OmniParser v2 (YOLO detector + finetuned Florence-2 captioner) on each screenshot. Omniparser is a vision language model that produces per-image bounding boxes, semantic captions, and annotated images. See `omniparser/README.md` for setup, weights download, and the flash_attn / OCR-import patches required.
+We ran Microsoft OmniParser v2 (YOLO detector + finetuned Florence-2 captioner) on each screenshot. Omniparser is a vision language model that produces per-image bounding boxes, semantic captions, and annotated images. See `omniparser/README.md` for setup, weights download, and the flash_attn and `util/utils.py` patches required.
 
 ### RESNET50
 
-We cropped each detected icon region from the source screenshots (`icon_crops.py`) and classifies them with a finetuned ResNet50 (`infer.py`). This produces per-icon class predictions.
+We cropped each detected icon region from the source screenshots (`updated_icon_crop.py`) and classifies them with a finetuned ResNet50 (`infer.py`). This produces per-icon class predictions.
 
 ### BERTOPIC
 
-We used the classifications form Resnet50 and the captiosn from Omniparser as test input into BERTopic to produce Topic clusters for icons.
+We used the classifications from Resnet50 and the captions from Omniparser as test input into BERTopic to produce Topic clusters for icons.
 
 ## Running the pipeline
 
-`run_pipeline.py` runs the whole flow for a **single photo** (photo → topics). Everything is configured in `pipeline_config.json`.
+`run_pipeline.py` runs the whole flow for a **single photo**. Everything is configured in `pipeline_config.json`.
 
 1. Each stage runs in its own conda env. Create them once by following `ENVIRONMENTS.md`.
-2. Edit `pipeline_config.json`: fill in the `python` path for each env (under `environments`), the `single_image` block (see below), and your output folder. Model paths under `Models/` are already set. More details in `ENVIRONMENTS.md`.
-3. Run it:
+2. Edit `pipeline_config.json`: fill in the `python` path for each env (under `environments`), the `single_image` block (see below), and your output folder. Also set `paths.omniparser_repo` to your cloned OmniParser directory (so stage 1 can find `util.utils`) and `params.device` to the torch device for the captioner. 
+3. Model paths need to be imported under `Models/`. More details in `ENVIRONMENTS.md`.
+4. Run it:
    ```bash
    python run_pipeline.py
    ```
@@ -81,23 +86,31 @@ python omniparser/process_image.py --image shot.png \
 
 `run_pipeline.py` has a `run_pipeline(...)` function, so another program can run the whole pipeline for one image and get the result back. It runs each stage as a subprocess in that stage's conda env. To run it, you need to setup the envs, OmniParser repo/weights, and a filled-in `pipeline_config.json` on the machine first (see setup above and `ENVIRONMENTS.md`).
 
+If the config is filled in, the call takes no arguments and uses `pipeline_config.json`:
+
 ```python
 import sys
 sys.path.insert(0, "/path/to/infographic_model")   # so the import resolves
 from run_pipeline import run_pipeline
 
+out = run_pipeline()
+
+# topic embedding
+print(out["embeddings_og"])
+```
+Every argument is optional and overrides the corresponding config value for that call, so you can process many images without editing the config each time:
+
+```python
 out = run_pipeline(
     image="/data/shot.png",
     uuid="abc123",
     country="ar",
     category="Business and Finance",
-    omniparser_cwd="/path/to/OmniParser",   # lets stage 1 find util.utils
-    work_dir="/tmp/run_abc123",
-    stages={"translate": False},            # use this to skip any stage, like translate if no AWS acess
+    work_dir="/tmp/run_abc123",          
+    device="cpu",                        # overrides params.device; if none,  use the config value
+    omniparser_cwd="/path/to/OmniParser",# overrides paths.omniparser_repo; if none, use use the config value
+    stages={"translate": False},         # skip any stage, e.g. translate if no AWS access
 )
-
-# returns a dict of output paths; the per-uuid topic-count vector is the end goal:
-print(out["embeddings_og"])
 ```
 
-Arguments override the `single_image` config values per call, so you don't edit the config each time. `python run_pipeline.py` still runs from the config as before.
+`python run_pipeline.py` still runs from the config as before.

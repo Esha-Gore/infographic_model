@@ -21,7 +21,7 @@ def _need(path, stage):
 
 def run_pipeline(image=None, uuid=None, country=None, category=None,
                  config_path=None, stages=None, work_dir=None,
-                 omniparser_cwd=None):
+                 omniparser_cwd=None, device=None):
     """
     Run the single-image icon pipeline end to end.
 
@@ -42,7 +42,12 @@ def run_pipeline(image=None, uuid=None, country=None, category=None,
             each other.
         omniparser_cwd: optional working dir for the OmniParser stage so that
             `from util.utils` resolves — point it at the cloned OmniParser repo.
-            If None, that stage runs in the current working directory.
+            If None, falls back to paths.omniparser_repo in the config; if that is
+            unset too, the stage runs in the current working directory.
+        device: torch device for the OmniParser captioner ("cpu", "mps", or "cuda").
+            If None, falls back to params.device in the config; if that is unset too,
+            process_image.py's own default ("cuda") applies. On a machine without an
+            NVIDIA GPU (e.g. any Mac) use "cpu".
 
     Returns:
         dict of the output file paths for the stages that were enabled. The final
@@ -64,6 +69,13 @@ def run_pipeline(image=None, uuid=None, country=None, category=None,
                      ("country", country), ("category", category)):
         if val is not None:
             single[key] = val
+
+    # OmniParser stage cwd (so `from util.utils` resolves) and captioner device,
+    # each overridable per-call but otherwise taken from the config.
+    if omniparser_cwd is None:
+        omniparser_cwd = paths.get("omniparser_repo")
+    if device is None:
+        device = params.get("device")
 
     work = work_dir or paths["work_dir"]
     os.makedirs(work, exist_ok=True)
@@ -88,7 +100,6 @@ def run_pipeline(image=None, uuid=None, country=None, category=None,
     topics_csv  = os.path.join(work, "topics.csv")
     topics_with_cat_csv = os.path.join(work, "topics_with_categories.csv")
     embeddings_og       = os.path.join(work, "embeddings_og.csv")
-    embeddings_filtered = os.path.join(work, "embeddings_filtered.csv")
 
     # 1. OmniParser: single photo -> all_detections.json
     if stage_flags.get("omniparser"):
@@ -100,7 +111,8 @@ def run_pipeline(image=None, uuid=None, country=None, category=None,
               "--category", single["category"],
               "--output-dir", omni_out,
               "--yolo-weights", params["omniparser_weights"]["yolo"],
-              "--florence-weights", params["omniparser_weights"]["florence"]],
+              "--florence-weights", params["omniparser_weights"]["florence"]]
+             + (["--device", device] if device else []),
              cwd=omniparser_cwd)
 
     # 2. Crop icons out of the screenshots -> crops/ + manifest.csv
@@ -173,16 +185,16 @@ def run_pipeline(image=None, uuid=None, country=None, category=None,
              os.path.join(ROOT, "BERTopic", "fill_category.py"),
              [topics_csv, category_lookup, topics_with_cat_csv])
 
-    # 9. Build per-uuid topic-count embedding vectors -> embeddings_og/filtered.csv
-    #    (the distance-analysis part of the old count_embeddings stage was dropped;
-    #    it needed >=2 websites and does not apply to a single image.)
+    # 9. Build per-uuid topic-count embedding vectors -> embeddings_og.csv
+    #    (single all-uuid file, no topic-count filter, matching Metrics/new.py. The
+    #    distance-analysis part of the old count_embeddings stage was dropped; it
+    #    needed >=2 websites and does not apply to a single image.)
     if stage_flags.get("count_embeddings"):
         _need(topics_with_cat_csv, "count_embeddings")
         _run("count_embeddings", envs["bertopic"],
              os.path.join(ROOT, "Metrics", "build_embeddings.py"),
              ["--input", topics_with_cat_csv,
-              "--og-out", embeddings_og,
-              "--filtered-out", embeddings_filtered])
+              "--output", embeddings_og])
 
     # return the paths for whatever stages ran. embeddings_og is the end goal.
     outputs = {
@@ -194,7 +206,6 @@ def run_pipeline(image=None, uuid=None, country=None, category=None,
         "topics_csv": topics_csv,
         "topics_with_categories": topics_with_cat_csv,
         "embeddings_og": embeddings_og,
-        "embeddings_filtered": embeddings_filtered,
     }
     return {k: v for k, v in outputs.items() if os.path.exists(v)}
 
