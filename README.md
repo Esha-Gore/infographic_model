@@ -52,8 +52,8 @@ We used the classifications from Resnet50 and the captions from Omniparser as te
 `run_pipeline.py` runs the whole flow for a **single photo**. Everything is configured in `pipeline_config.json`.
 
 1. Each stage runs in its own conda env. Create them once by following `ENVIRONMENTS.md`.
-2. Edit `pipeline_config.json`: fill in the `python` path for each env (under `environments`), the `single_image` block (see below), and your output folder. Also set `paths.omniparser_repo` to your cloned OmniParser directory (so stage 1 can find `util.utils`) and `params.device` to the torch device for the captioner. 
-3. Model paths need to be imported under `Models/`. More details in `ENVIRONMENTS.md`.
+2. Edit `pipeline_config.json`: fill in the `python` path for each env (under `environments`), the `single_image` block (see below), and your output folder. Also set `paths.omniparser_repo` to your cloned OmniParser directory (so stage 1 can find `util.utils`) and `params.device` to the torch device for the captioner.  More details in `ENVIRONMENTS.md`.
+3. Model paths need to be imported under `Models/`. [TODO: Add public links somewhere?]
 4. Run it:
    ```bash
    python run_pipeline.py

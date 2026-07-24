@@ -27,25 +27,25 @@ To ensure this worked, check that  `weights/icon_caption_florence` should have e
 
 ### 3. Build the conda env
 
-Use the portable script at the repo root. It works on Mac and Linux, picks the right torch (GPU vs CPU) for you, and prints the python path to paste into `pipeline_config.json`:
+To build the env, use the portable script at the repo root. It works on Mac and Linux, picks the right torch (GPU vs CPU) for you, and prints the python path to paste into `pipeline_config.json`:
 
 ```bash
 bash ../setup_env.sh omniparser    
 ```
 
-It installs torch, transformers, the Florence-2 dependencies, YOLO, and pinned numpy/opencv. It does not install paddleocr or easyocr as this pipeline only runs icon captioning only (no OCR), so they aren't needed.
+It installs torch, transformers, the Florence-2 dependencies, YOLO, and pinned numpy/opencv. It does not install paddleocr or easyocr as this pipeline only runs icon captioning only (no OCR), so they aren't needed (see more on the env in `ENVIRONMENTS.md`).
 
 
 ### 4. Use our `util/utils.py`, not the fresh clone's 
 
-A fresh clone of OmniParser **won't work for us**: upstream changed `util/utils.py` after our run, and the new version crashes on our no-OCR setup (you'll get `'NoneType' object is not iterable`). Our working copy is saved here as `og_utils.py`. After cloning, swap it in:
+A fresh clone of OmniParser does not work for our pipeline as upstream changes on `util/utils.py` after our run cause the new version to crash on our no-OCR setup (with  `'NoneType' object is not iterable` errors). Our working copy is saved here as `og_utils.py`. After cloning OmniParser, swap it in:
 
 ```bash
 cp OmniParser/util/utils.py OmniParser/util/utils.py.upstream.bak   # keep the original, just in case
 cp infographic_model/omniparser/og_utils.py OmniParser/util/utils.py
 ```
 
-Ours differs from upstream in a few ways that matter: it handles the empty-OCR case, uses the plain YOLO detector (not upstream's newer v3 default), and keeps the eager-attention setting. It also already has the unused OCR imports (`openai`, `easyocr`, `paddleocr`) commented out.
+Ours differs from the upstream version as it handles the empty-OCR case, uses the plain YOLO detector (not upstream's newer v3 default), and keeps the eager-attention setting. It also already has the unused OCR imports (`openai`, `easyocr`, `paddleocr`) commented out.
 
 ### 5. Turn off the flash_attn requirement
 
