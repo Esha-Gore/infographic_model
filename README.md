@@ -1,5 +1,6 @@
 # Icon Detection and Clustering Model
----- Add in Blurb ----
+A machine learning research pipeline for understanding website design across cultures. Combining OmniParser UI detection, ResNet-50 icon classification, and BERTopic semantic clustering, it turns website screenshots into structured data to help researchers explore how interfaces communicate through imagery, icons, and layout.
+
 ## FLOWCHART OF DATA + FILES
 
 ```mermaid
